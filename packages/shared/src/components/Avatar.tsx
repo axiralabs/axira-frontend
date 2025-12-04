@@ -58,9 +58,9 @@ const sizeClasses = {
 
 export function SimpleAvatar({ src, alt, fallback, size = 'md', className }: SimpleAvatarProps) {
   return (
-    <Avatar className={cn(sizeClasses[size], className)}>
+    <Avatar className={cn(sizeClasses[size])}>
       {src && <AvatarImage src={src} alt={alt} />}
-      <AvatarFallback>{fallback}</AvatarFallback>
+      <AvatarFallback className={className}>{fallback}</AvatarFallback>
     </Avatar>
   );
 }

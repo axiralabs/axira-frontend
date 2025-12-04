@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@axira/shared/utils';
 import { AxiraLogo } from '../AxiraLogo';
 import { useChatContext } from '../../features/chat/context';
@@ -7,6 +7,10 @@ import { getPulseSummary } from '../../features/guardian';
 export function TopNavLayout() {
   const { openChat } = useChatContext();
   const pulseSummary = getPulseSummary();
+  const location = useLocation();
+
+  // Check if we're on the board page (for Board Member demo)
+  const isBoardView = location.pathname === '/board';
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-950">
@@ -66,6 +70,18 @@ export function TopNavLayout() {
             )}
           </NavLink>
           <NavLink
+            to="/board"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2 text-base font-medium transition-colors',
+                isActive ? 'text-white' : 'text-gray-400 hover:text-white'
+              )
+            }
+          >
+            <BoardIcon className="w-4 h-4" />
+            Board
+          </NavLink>
+          <NavLink
             to="/studio"
             className={({ isActive }) =>
               cn(
@@ -80,8 +96,13 @@ export function TopNavLayout() {
 
         {/* Right: User avatar */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-            MC
+          <div className={cn(
+            'w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium',
+            isBoardView
+              ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+              : 'bg-gradient-to-br from-blue-500 to-purple-600'
+          )}>
+            {isBoardView ? 'BM' : 'MC'}
           </div>
         </div>
       </header>
@@ -91,5 +112,16 @@ export function TopNavLayout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+// Board Icon
+function BoardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M9 21V9" />
+    </svg>
   );
 }

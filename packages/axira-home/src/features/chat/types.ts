@@ -371,6 +371,14 @@ export interface ChatMessage {
   skillsExecuted?: SkillExecution[];
   structuredResponse?: StructuredResponse;
   citations?: Citation[];
+  followUpQuestions?: string[];
+  quickActions?: QuickAction[];
+}
+
+export interface QuickAction {
+  id: string;
+  label: string;
+  icon?: 'download' | 'share' | 'bookmark' | 'copy' | 'print' | 'calendar' | 'email' | 'chart';
 }
 
 export interface PlanningState {

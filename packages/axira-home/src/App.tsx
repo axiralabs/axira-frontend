@@ -4,6 +4,7 @@ import { HomePageWithPersonaSwitcher } from './features/home/RoleBasedHome';
 import { BranchManagerHomePage } from './features/home/BranchManagerHomePage';
 import { QAReviewerHomePage } from './features/home/QAReviewerHomePage';
 import { GuardianPage } from './features/guardian';
+import { BoardPage } from './features/board';
 import { WorkPage } from './features/work/WorkPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { ChatProvider } from './features/chat/context';
@@ -39,6 +40,7 @@ export function App() {
 
           {/* Other routes */}
           <Route path="pulse" element={<GuardianPage />} />
+          <Route path="board" element={<BoardPage />} />
           <Route path="work" element={<WorkPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
         </Route>

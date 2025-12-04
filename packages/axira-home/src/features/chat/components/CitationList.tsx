@@ -6,15 +6,24 @@ interface CitationListProps {
   className?: string;
 }
 
+// Source system icons and colors
+const SOURCE_STYLES: Record<string, { icon: string; color: string; bgColor: string }> = {
+  SILVERLAKE_CORE: { icon: '🏦', color: 'text-blue-400', bgColor: 'bg-blue-900/30' },
+  SHAREPOINT: { icon: '📄', color: 'text-orange-400', bgColor: 'bg-orange-900/30' },
+  AXIRA_ANALYTICS: { icon: '📊', color: 'text-emerald-400', bgColor: 'bg-emerald-900/30' },
+  SYNERGY_DMS: { icon: '📁', color: 'text-green-400', bgColor: 'bg-green-900/30' },
+  LEXISNEXIS: { icon: '🛡️', color: 'text-purple-400', bgColor: 'bg-purple-900/30' },
+};
+
 export function CitationList({ citations, className }: CitationListProps) {
   if (!citations.length) return null;
 
   return (
-    <div className={cn('mt-3 pt-3 border-t', className)}>
-      <p className="text-xs font-medium text-muted-foreground mb-2">Sources</p>
-      <div className="flex flex-wrap gap-1.5">
+    <div className={cn('mt-3 pt-3 border-t border-gray-700', className)}>
+      <p className="text-xs font-medium text-gray-400 mb-2">Sources</p>
+      <div className="flex flex-wrap gap-2">
         {citations.map((citation, index) => (
-          <CitationChip key={index} citation={citation} index={index + 1} />
+          <CitationChip key={citation.id || index} citation={citation} index={index + 1} />
         ))}
       </div>
     </div>
@@ -27,35 +36,43 @@ interface CitationChipProps {
 }
 
 function CitationChip({ citation, index }: CitationChipProps) {
-  const hasLink = Boolean(citation.url);
+  const hasRealLink = Boolean(citation.url) && !citation.url?.startsWith('#');
+  const sourceStyle = SOURCE_STYLES[citation.source] || { icon: '📎', color: 'text-gray-400', bgColor: 'bg-gray-800' };
 
   const content = (
     <>
-      <span className="inline-flex items-center justify-center w-4 h-4 bg-primary/20 text-primary text-[10px] font-medium rounded-full shrink-0">
-        {index}
-      </span>
-      <span className="truncate max-w-[200px]">{citation.title || citation.source}</span>
+      <span className="text-sm">{sourceStyle.icon}</span>
+      <span className={cn('truncate max-w-[180px]', sourceStyle.color)}>{citation.title || citation.source}</span>
     </>
   );
 
-  if (hasLink) {
+  // Only render as a link if it's a real URL (not a hash link)
+  if (hasRealLink) {
     return (
       <a
         href={citation.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs bg-muted hover:bg-accent rounded-md transition-colors"
+        className={cn(
+          'inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-colors border border-gray-700',
+          sourceStyle.bgColor,
+          'hover:border-gray-600 hover:brightness-110'
+        )}
         title={citation.title || citation.source}
       >
         {content}
-        <ExternalLinkIcon className="h-3 w-3 shrink-0 opacity-50" />
+        <ExternalLinkIcon className="h-3 w-3 shrink-0 text-gray-500" />
       </a>
     );
   }
 
+  // For hash links or no links, render as a non-interactive chip
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2 py-1 text-xs bg-muted rounded-md"
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-gray-700 cursor-default',
+        sourceStyle.bgColor
+      )}
       title={citation.title || citation.source}
     >
       {content}

@@ -1,15 +1,22 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { cn } from '@axira/shared/utils';
 import { useAuth } from '@axira/shared/hooks';
-import { useChatContext, type ChatViewMode, type Conversation } from '../context';
-import { useChat } from '../hooks/useChat';
+import { useChatContext, type ChatViewMode, type Conversation, type ConversationMessage } from '../context';
 import { AxiraLogo } from '../../../components/AxiraLogo';
 import { MessageThread } from './MessageThread';
 import { EvidenceSlideOver } from './EvidenceSlideOver';
 import { PromptTemplateCard } from './PromptTemplateCard';
 import { PlaceholderEditor } from './PlaceholderEditor';
-import { PROMPT_TEMPLATES, TEMPLATE_CATEGORIES, type PromptTemplate } from '../data/promptTemplates';
-import type { AgentOption } from '../types';
+import { PROMPT_TEMPLATES, TEMPLATE_CATEGORIES, type PromptTemplate, type TemplateCategory } from '../data/promptTemplates';
+import { getSimulatedResponse, matchTemplateFromMessage, type SimulatedResponse } from '../../board/data/boardSimulatedResponses';
+import type { AgentOption, ChatMessage } from '../types';
+
+// Mock agents for demo
+const MOCK_AGENTS: AgentOption[] = [
+  { key: 'board-assistant', name: 'Board Assistant', description: 'Strategic intelligence for board members' },
+  { key: 'branch-banker-assistant', name: 'Branch Banker', description: 'Helps with customer inquiries' },
+  { key: 'qa-reviewer', name: 'QA Reviewer', description: 'Assists with compliance checks' },
+];
 
 export function ChatSlideOver() {
   const {
@@ -25,18 +32,394 @@ export function ChatSlideOver() {
     conversations,
     createNewConversation,
     switchConversation,
+    promptTemplates: contextTemplates,
+    templateCategories: contextCategories,
+    getCurrentConversationMessages,
   } = useChatContext();
-  const { user } = useAuth();
-  const firstName = user?.displayName?.split(' ')[0] || 'there';
 
-  const {
-    messages,
-    isStreaming,
-    selectedAgent,
-    availableAgents,
-    setSelectedAgent,
-    sendMessage,
-  } = useChat();
+  // Use context templates if available, otherwise fall back to defaults
+  const activeTemplates = useMemo(() => contextTemplates || PROMPT_TEMPLATES, [contextTemplates]);
+  const activeCategories = useMemo(() => contextCategories || TEMPLATE_CATEGORIES, [contextCategories]);
+  const { user } = useAuth();
+  const firstName = user?.displayName?.split(' ')[0] || 'Margaret';
+
+  // Mock state for demo
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<AgentOption>(MOCK_AGENTS[0]);
+  const availableAgents = MOCK_AGENTS;
+  const streamingRef = useRef<boolean>(false);
+  const abortRef = useRef<boolean>(false);
+
+  // Planning steps for demo
+  const PLANNING_STEPS = [
+    { agent: 'Business Planner', skill: null, stage: 'Analyzing request...' },
+    { agent: 'Board Intelligence Agent', skill: 'Data Retrieval', stage: 'Fetching branch metrics...' },
+    { agent: 'Board Intelligence Agent', skill: 'Analytics Engine', stage: 'Computing performance data...' },
+    { agent: 'Board Intelligence Agent', skill: 'Insight Generator', stage: 'Generating strategic insights...' },
+  ];
+
+  // Mock sources for citations
+  const MOCK_SOURCES = [
+    { id: 'src-1', source: 'SILVERLAKE_CORE', title: 'Jack Henry Silverlake', url: '#silverlake' },
+    { id: 'src-2', source: 'SHAREPOINT', title: 'SharePoint - Strategic Planning', url: '#sharepoint' },
+    { id: 'src-3', source: 'AXIRA_ANALYTICS', title: 'Axira Analytics', url: '#analytics' },
+  ];
+
+  // Stream text in chunks for faster rendering
+  const streamText = useCallback(async (
+    messageId: string,
+    fullText: string,
+    onComplete: () => void
+  ) => {
+    console.log('streamText called:', { messageId, textLength: fullText.length, aborted: abortRef.current });
+
+    if (abortRef.current) {
+      console.log('streamText aborted at start');
+      onComplete();
+      return;
+    }
+
+    // Check if the message exists in the current state
+    setMessages(prev => {
+      const msgExists = prev.some(m => m.id === messageId);
+      console.log('Message exists check:', { messageId, exists: msgExists, messageCount: prev.length });
+      return prev;
+    });
+
+    const words = fullText.split(' ');
+    let currentText = '';
+
+    // Stream in chunks of 5-10 words for faster rendering
+    const chunkSize = 8;
+
+    console.log('Starting streaming loop, total words:', words.length);
+
+    for (let i = 0; i < words.length; i += chunkSize) {
+      if (abortRef.current) {
+        console.log('streamText aborted mid-stream at word index:', i);
+        onComplete();
+        return;
+      }
+
+      // Add chunk of words
+      const chunk = words.slice(i, Math.min(i + chunkSize, words.length));
+      currentText += (i === 0 ? '' : ' ') + chunk.join(' ');
+
+      const textToSet = currentText; // Capture current value
+      setMessages(prev => {
+        const updated = prev.map(msg =>
+          msg.id === messageId
+            ? { ...msg, content: textToSet, isStreaming: true }
+            : msg
+        );
+        if (i === 0) {
+          console.log('First chunk update, found message:', updated.some(m => m.id === messageId && m.content.length > 0));
+        }
+        return updated;
+      });
+
+      // Small delay between chunks for natural feel
+      await new Promise(resolve => setTimeout(resolve, 30 + Math.random() * 20));
+    }
+
+    console.log('Streaming complete, setting final content');
+
+    // Mark as complete
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId
+        ? { ...msg, content: fullText, isStreaming: false }
+        : msg
+    ));
+
+    onComplete();
+  }, []);
+
+  // Simulate planning and streaming for a single Q&A pair
+  const simulateQAPair = useCallback(async (
+    userMsg: ConversationMessage,
+    assistantMsg: ConversationMessage,
+    isLast: boolean
+  ) => {
+    // Add user message immediately
+    const userMessage: ChatMessage = {
+      id: userMsg.id,
+      role: 'user',
+      content: userMsg.content,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Add assistant placeholder with planning state
+    const assistantId = assistantMsg.id;
+    const assistantMessage: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true,
+      planningState: {
+        businessAgentName: 'Board Intelligence Agent',
+        stage: 'Initializing...',
+      },
+      skillsExecuted: [],
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
+    // Simulate planning steps
+    for (let i = 0; i < PLANNING_STEPS.length; i++) {
+      if (abortRef.current) return;
+
+      const step = PLANNING_STEPS[i];
+
+      setMessages(prev => prev.map(msg =>
+        msg.id === assistantId
+          ? {
+              ...msg,
+              planningState: {
+                businessAgentName: step.agent,
+                processAgentName: step.skill ? 'Process Agent' : undefined,
+                stage: step.stage,
+              },
+              skillsExecuted: step.skill
+                ? [...(msg.skillsExecuted || []), {
+                    skillId: `skill-${i}`,
+                    skillName: step.skill,
+                    status: 'RUNNING' as const,
+                  }]
+                : msg.skillsExecuted,
+            }
+          : msg
+      ));
+
+      await new Promise(resolve => setTimeout(resolve, 400 + Math.random() * 200));
+
+      // Mark skill as complete
+      if (step.skill) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                skillsExecuted: msg.skillsExecuted?.map((s, idx) =>
+                  idx === (msg.skillsExecuted?.length || 0) - 1
+                    ? { ...s, status: 'SUCCESS' as const, durationMs: Math.floor(100 + Math.random() * 300) }
+                    : s
+                ),
+              }
+            : msg
+        ));
+      }
+    }
+
+    // Clear planning state and start streaming
+    setMessages(prev => prev.map(msg =>
+      msg.id === assistantId
+        ? { ...msg, planningState: null }
+        : msg
+    ));
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Stream the response
+    await new Promise<void>(resolve => {
+      streamText(assistantId, assistantMsg.content, resolve);
+    });
+
+    // Add citations after streaming is complete
+    setMessages(prev => prev.map(msg =>
+      msg.id === assistantId
+        ? {
+            ...msg,
+            citations: MOCK_SOURCES,
+          }
+        : msg
+    ));
+
+    if (!isLast) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }, [streamText]);
+
+  // Load messages when conversation changes - only show first Q&A with streaming
+  useEffect(() => {
+    if (currentConversationId && !streamingRef.current) {
+      streamingRef.current = true;
+      abortRef.current = false;
+      setMessages([]);
+      setIsStreaming(true);
+
+      const contextMessages = getCurrentConversationMessages();
+
+      // Only get the first Q&A pair
+      if (contextMessages.length >= 2) {
+        const firstPair = {
+          user: contextMessages[0],
+          assistant: contextMessages[1],
+        };
+
+        // Process only the first pair
+        (async () => {
+          if (!abortRef.current) {
+            await simulateQAPair(firstPair.user, firstPair.assistant, true);
+          }
+          setIsStreaming(false);
+          streamingRef.current = false;
+        })();
+      } else {
+        setIsStreaming(false);
+        streamingRef.current = false;
+      }
+    } else if (!currentConversationId) {
+      abortRef.current = true;
+      streamingRef.current = false;
+      setMessages([]);
+      setIsStreaming(false);
+    }
+  }, [currentConversationId, getCurrentConversationMessages, simulateQAPair]);
+
+  // Mock sendMessage function with planning and streaming
+  const sendMessage = useCallback(async (content: string, templateId?: string) => {
+    if (!content.trim() || isStreaming) return;
+
+    // Reset abort flag before starting new message
+    abortRef.current = false;
+    setIsStreaming(true);
+
+    // Add user message
+    const userMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Try to find a simulated response
+    const matchedTemplateId = templateId || matchTemplateFromMessage(content);
+    const simulatedResponse = matchedTemplateId ? getSimulatedResponse(matchedTemplateId) : null;
+
+    console.log('Template lookup:', { templateId, matchedTemplateId, hasResponse: !!simulatedResponse });
+
+    // Use simulated response planning steps or defaults
+    const planningSteps = simulatedResponse?.planningSteps || PLANNING_STEPS;
+    const responseSources = simulatedResponse?.sources || MOCK_SOURCES;
+
+    // Add assistant placeholder with planning
+    const assistantId = `msg-${Date.now()}-response`;
+    const assistantMessage: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true,
+      planningState: {
+        businessAgentName: 'Board Intelligence Agent',
+        stage: 'Initializing...',
+      },
+      skillsExecuted: [],
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
+    // Simulate planning steps
+    console.log('Starting planning steps, count:', planningSteps.length);
+    for (let i = 0; i < planningSteps.length; i++) {
+      const step = planningSteps[i];
+      console.log('Planning step', i, step);
+
+      setMessages(prev => prev.map(msg =>
+        msg.id === assistantId
+          ? {
+              ...msg,
+              planningState: {
+                businessAgentName: step.agent,
+                processAgentName: step.skill ? 'Process Agent' : undefined,
+                stage: step.stage,
+              },
+              skillsExecuted: step.skill
+                ? [...(msg.skillsExecuted || []), {
+                    skillId: `skill-${i}`,
+                    skillName: step.skill,
+                    status: 'RUNNING' as const,
+                  }]
+                : msg.skillsExecuted,
+            }
+          : msg
+      ));
+
+      await new Promise(resolve => setTimeout(resolve, 400 + Math.random() * 200));
+
+      if (step.skill) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                skillsExecuted: msg.skillsExecuted?.map((s, idx) =>
+                  idx === (msg.skillsExecuted?.length || 0) - 1
+                    ? { ...s, status: 'SUCCESS' as const, durationMs: Math.floor(100 + Math.random() * 300) }
+                    : s
+                ),
+              }
+            : msg
+        ));
+      }
+    }
+
+    // Clear planning and stream response
+    console.log('Planning complete, clearing planning state');
+    setMessages(prev => {
+      console.log('Messages before clearing planning:', prev.map(m => ({ id: m.id, hasContent: !!m.content, planningState: !!m.planningState })));
+      return prev.map(msg =>
+        msg.id === assistantId
+          ? { ...msg, planningState: null }
+          : msg
+      );
+    });
+
+    // Small delay to ensure state update is processed
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Use simulated response content or default
+    const responseText = simulatedResponse?.content || `Based on current Q4 2024 data, I can provide insights on "${content}".
+
+**Key Findings:**
+- Performance metrics show positive trends across most branches
+- McAllen continues to lead with 14.2% YoY growth
+- Net Interest Margin averaged 3.79% organization-wide
+
+**Recommendation:** I suggest focusing on the specific metrics most relevant to your query. Would you like me to drill down into branch comparisons, financial projections, or risk analysis?`;
+
+    console.log('About to start streaming, responseText length:', responseText.length, 'assistantId:', assistantId);
+
+    await new Promise<void>(resolve => {
+      streamText(assistantId, responseText, resolve);
+    });
+
+    // Add citations, follow-up questions, and quick actions after streaming
+    setMessages(prev => prev.map(msg =>
+      msg.id === assistantId
+        ? {
+            ...msg,
+            citations: responseSources,
+            followUpQuestions: simulatedResponse?.followUpQuestions || [
+              'Tell me more about this analysis',
+              'What are the key risks to consider?',
+              'How does this compare to last quarter?',
+            ],
+            quickActions: simulatedResponse?.quickActions || [
+              { id: 'download', label: 'Download Report', icon: 'download' as const },
+              { id: 'share', label: 'Share', icon: 'share' as const },
+              { id: 'bookmark', label: 'Save', icon: 'bookmark' as const },
+            ],
+          }
+        : msg
+    ));
+
+    setIsStreaming(false);
+  }, [isStreaming, streamText]);
 
   // UI State
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
@@ -104,15 +487,23 @@ export function ChatSlideOver() {
   );
 
   const handleTemplateSelect = useCallback((template: PromptTemplate) => {
-    setSelectedTemplate(template);
-  }, []);
+    // If template has no placeholders, send directly
+    if (template.placeholders.length === 0) {
+      sendMessage(template.template, template.id);
+    } else {
+      setSelectedTemplate(template);
+    }
+  }, [sendMessage]);
 
   const handleTemplateSubmit = useCallback(
     (filledTemplate: string) => {
-      sendMessage(filledTemplate);
+      // Capture template ID before clearing selectedTemplate
+      const templateId = selectedTemplate?.id;
       setSelectedTemplate(null);
+      // Pass template ID to sendMessage for simulated response lookup
+      sendMessage(filledTemplate, templateId);
     },
-    [sendMessage]
+    [sendMessage, selectedTemplate]
   );
 
   const handleExplainClick = useCallback((evidencePackId: string) => {
@@ -136,8 +527,8 @@ export function ChatSlideOver() {
   }, [viewMode, setViewMode]);
 
   const filteredTemplates = selectedCategory === 'all'
-    ? PROMPT_TEMPLATES
-    : PROMPT_TEMPLATES.filter((t) => t.category === selectedCategory);
+    ? activeTemplates
+    : activeTemplates.filter((t) => t.category === selectedCategory);
 
   if (!isOpen) return null;
 
@@ -195,7 +586,16 @@ export function ChatSlideOver() {
             {/* Sidebar Header */}
             <div className="p-4 border-b border-gray-800">
               <button
-                onClick={createNewConversation}
+                onClick={() => {
+                  // Abort any ongoing streaming
+                  abortRef.current = true;
+                  setIsStreaming(false);
+                  streamingRef.current = false;
+                  // Reset messages for new conversation
+                  setMessages([]);
+                  // Call context's createNewConversation
+                  createNewConversation();
+                }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -206,7 +606,7 @@ export function ChatSlideOver() {
             {/* Conversation List */}
             <div className="flex-1 overflow-y-auto py-2">
               <div className="px-3 mb-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Recent</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">History</p>
               </div>
               {conversations.map((conv) => (
                 <button
@@ -313,8 +713,8 @@ export function ChatSlideOver() {
                   </p>
 
                   {/* Category Filters */}
-                  <div className="flex items-center gap-2 mb-6">
-                    {TEMPLATE_CATEGORIES.map((cat) => (
+                  <div className="flex items-center gap-2 mb-6 flex-wrap justify-center">
+                    {activeCategories.map((cat) => (
                       <button
                         key={cat.key}
                         onClick={() => setSelectedCategory(cat.key)}
@@ -356,6 +756,8 @@ export function ChatSlideOver() {
                 messages={messages}
                 userName={user?.displayName}
                 onExplainClick={handleExplainClick}
+                onFollowUpClick={(question) => sendMessage(question)}
+                onQuickActionClick={(action) => console.log('Quick action:', action)}
                 className="flex-1"
               />
             )}

@@ -10,9 +10,14 @@ export interface PromptTemplate {
   description: string;
   template: string;
   placeholders: PromptPlaceholder[];
-  icon: 'document' | 'search' | 'check' | 'alert' | 'user' | 'money';
+  icon: 'document' | 'search' | 'check' | 'alert' | 'user' | 'money' | 'chart' | 'users' | 'trending';
   iconColor: string;
-  category: 'compliance' | 'customer' | 'operations' | 'reporting';
+  category: string; // Flexible category for different contexts (compliance, customer, operations, reporting, risk, performance, strategy)
+}
+
+export interface TemplateCategory {
+  key: string;
+  label: string;
 }
 
 export const PROMPT_TEMPLATES: PromptTemplate[] = [
@@ -94,7 +99,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
   },
 ];
 
-export const TEMPLATE_CATEGORIES = [
+export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
   { key: 'all', label: 'All' },
   { key: 'compliance', label: 'Compliance' },
   { key: 'customer', label: 'Customer' },

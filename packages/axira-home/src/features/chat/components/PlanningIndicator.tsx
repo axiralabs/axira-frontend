@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Badge, Skeleton } from '@axira/shared/components';
 import { cn } from '@axira/shared/utils';
-import type { PlannerUpdateEvent, NodeStatusEvent } from '@axira/shared/types';
+import type { PlanningState, SkillExecution } from '../types';
 
 interface PlanningIndicatorProps {
-  planningState: PlannerUpdateEvent | null;
-  skillsExecuted: NodeStatusEvent[];
+  planningState: PlanningState | null;
+  skillsExecuted: SkillExecution[];
   isStreaming: boolean;
   className?: string;
 }
@@ -22,8 +22,8 @@ export function PlanningIndicator({
     return null;
   }
 
-  const currentAgent = planningState?.business_agent_name || planningState?.business_agent_key;
-  const currentProcess = planningState?.process_agent_name || planningState?.process_agent_key;
+  const currentAgent = planningState?.businessAgentName || planningState?.businessAgentId;
+  const currentProcess = planningState?.processAgentName || planningState?.processAgentKey;
   const stage = planningState?.stage;
 
   return (
@@ -83,7 +83,7 @@ export function PlanningIndicator({
             <div className="space-y-1">
               <span className="text-xs font-medium text-gray-400">Skills:</span>
               {skillsExecuted.map((skill) => (
-                <SkillExecutionItem key={skill.node_id} skill={skill} />
+                <SkillExecutionItem key={skill.skillId} skill={skill} />
               ))}
             </div>
           )}
@@ -101,7 +101,7 @@ export function PlanningIndicator({
 }
 
 interface SkillExecutionItemProps {
-  skill: NodeStatusEvent;
+  skill: SkillExecution;
 }
 
 function SkillExecutionItem({ skill }: SkillExecutionItemProps) {
@@ -110,12 +110,12 @@ function SkillExecutionItem({ skill }: SkillExecutionItemProps) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <statusConfig.icon className={cn('h-3.5 w-3.5', statusConfig.iconClass)} />
-      <span className="font-medium text-gray-300">{skill.skill_name || skill.skill_id || skill.node_id}</span>
+      <span className="font-medium text-gray-300">{skill.skillName || skill.skillId}</span>
       <Badge variant={statusConfig.variant} className="text-[10px] px-1.5 py-0">
         {skill.status}
       </Badge>
-      {skill.duration_ms != null && (
-        <span className="text-gray-500">{skill.duration_ms}ms</span>
+      {skill.durationMs != null && (
+        <span className="text-gray-500">{skill.durationMs}ms</span>
       )}
     </div>
   );

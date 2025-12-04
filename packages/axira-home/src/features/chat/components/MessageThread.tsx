@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ScrollArea } from '@axira/shared/components';
 import { cn } from '@axira/shared/utils';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, QuickAction } from '../types';
 import { UserMessage } from './UserMessage';
 import { AgentResponse } from './AgentResponse';
 
@@ -11,6 +11,8 @@ interface MessageThreadProps {
   className?: string;
   autoScroll?: boolean;
   onExplainClick?: (evidencePackId: string) => void;
+  onFollowUpClick?: (question: string) => void;
+  onQuickActionClick?: (action: QuickAction) => void;
 }
 
 export function MessageThread({
@@ -19,6 +21,8 @@ export function MessageThread({
   className,
   autoScroll = true,
   onExplainClick,
+  onFollowUpClick,
+  onQuickActionClick,
 }: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -46,7 +50,12 @@ export function MessageThread({
             {message.role === 'user' ? (
               <UserMessage message={message} userName={userName} />
             ) : (
-              <AgentResponse message={message} onExplainClick={onExplainClick} />
+              <AgentResponse
+                message={message}
+                onExplainClick={onExplainClick}
+                onFollowUpClick={onFollowUpClick}
+                onQuickActionClick={onQuickActionClick}
+              />
             )}
           </div>
         ))}
