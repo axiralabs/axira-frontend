@@ -34,3 +34,7 @@ Thumbs.db
 # Generated
 *.generated.ts
 *.generated.tsx
+
+# Local dev guides (keep locally, not in repo)
+CLAUDE.md
+FRONTEND_BUILD_GUIDE.md
