@@ -697,70 +697,72 @@ export function ChatSlideOver() {
 
           {/* Main content area */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-950">
-            {!hasMessages ? (
-              /* Empty state - Welcome screen with templates */
-              <div className="flex-1 overflow-y-auto">
-                <div className={cn(
-                  'flex flex-col items-center pt-12 pb-8 px-6',
-                  isFullscreen && 'max-w-4xl mx-auto'
-                )}>
-                  <AxiraLogo size="lg" className="mb-6" />
-                  <h2 className="text-2xl font-semibold text-white mb-2">
-                    How can I help, {firstName}?
-                  </h2>
-                  <p className="text-gray-500 text-center mb-8 max-w-md">
-                    Ask a question or select a template below to get started
-                  </p>
+            {/* Empty state - Welcome screen with templates */}
+            <div
+              className={cn(
+                'flex-1 overflow-y-auto',
+                hasMessages && 'hidden'
+              )}
+            >
+              <div className={cn(
+                'flex flex-col items-center pt-12 pb-8 px-6',
+                isFullscreen && 'max-w-4xl mx-auto'
+              )}>
+                <AxiraLogo size="lg" className="mb-6" />
+                <h2 className="text-2xl font-semibold text-white mb-2">
+                  How can I help, {firstName}?
+                </h2>
+                <p className="text-gray-500 text-center mb-8 max-w-md">
+                  Ask a question or select a template below to get started
+                </p>
 
-                  {/* Category Filters */}
-                  <div className="flex items-center gap-2 mb-6 flex-wrap justify-center">
-                    {activeCategories.map((cat) => (
-                      <button
-                        key={cat.key}
-                        onClick={() => setSelectedCategory(cat.key)}
-                        className={cn(
-                          'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                          selectedCategory === cat.key
-                            ? 'bg-blue-900/50 text-blue-400'
-                            : 'text-gray-400 hover:bg-gray-800'
-                        )}
-                      >
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Template Grid */}
-                  <div className={cn(
-                    'w-full grid gap-4',
-                    isFullscreen ? 'grid-cols-3' : isExpanded ? 'grid-cols-2' : 'grid-cols-1'
-                  )}>
-                    {filteredTemplates.map((template) => (
-                      <PromptTemplateCard
-                        key={template.id}
-                        template={template}
-                        onClick={handleTemplateSelect}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Results count */}
-                  <p className="text-sm text-gray-500 mt-6">
-                    {filteredTemplates.length} templates
-                  </p>
+                {/* Category Filters */}
+                <div className="flex items-center gap-2 mb-6 flex-wrap justify-center">
+                  {activeCategories.map((cat) => (
+                    <button
+                      key={cat.key}
+                      onClick={() => setSelectedCategory(cat.key)}
+                      className={cn(
+                        'px-4 py-2 rounded-full text-sm font-medium transition-colors',
+                        selectedCategory === cat.key
+                          ? 'bg-blue-900/50 text-blue-400'
+                          : 'text-gray-400 hover:bg-gray-800'
+                      )}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
+
+                {/* Template Grid */}
+                <div className={cn(
+                  'w-full grid gap-4',
+                  isFullscreen ? 'grid-cols-3' : isExpanded ? 'grid-cols-2' : 'grid-cols-1'
+                )}>
+                  {filteredTemplates.map((template) => (
+                    <PromptTemplateCard
+                      key={template.id}
+                      template={template}
+                      onClick={handleTemplateSelect}
+                    />
+                  ))}
+                </div>
+
+                {/* Results count */}
+                <p className="text-sm text-gray-500 mt-6">
+                  {filteredTemplates.length} templates
+                </p>
               </div>
-            ) : (
-              /* Message thread */
-              <MessageThread
-                messages={messages}
-                userName={user?.displayName}
-                onExplainClick={handleExplainClick}
-                onFollowUpClick={(question) => sendMessage(question)}
-                onQuickActionClick={(action) => console.log('Quick action:', action)}
-                className="flex-1"
-              />
-            )}
+            </div>
+            {/* Message thread - always rendered to avoid remount flicker */}
+            <MessageThread
+              messages={messages}
+              userName={user?.displayName}
+              onExplainClick={handleExplainClick}
+              onFollowUpClick={(question) => sendMessage(question)}
+              onQuickActionClick={(action) => console.log('Quick action:', action)}
+              className={cn('flex-1', !hasMessages && 'hidden')}
+            />
           </div>
 
           {/* Input area */}

@@ -186,6 +186,97 @@ export interface ErrorEvent extends BaseSSEEvent {
   };
 }
 
+// ============================================================================
+// Discovery Stream Events (from Dynamic Capability Discovery)
+// ============================================================================
+
+export interface DiscoveryIntentDetectedEvent extends BaseSSEEvent {
+  type: 'DISCOVERY_INTENT_DETECTED';
+  payload?: {
+    intent: string;
+    domain: string;
+    confidence?: number;
+  };
+}
+
+export interface DiscoveryFeaturesComputedEvent extends BaseSSEEvent {
+  type: 'DISCOVERY_FEATURES_COMPUTED';
+  payload?: {
+    subjectKey: string;
+    features: Record<string, unknown>;
+    computationTimeMs?: number;
+  };
+}
+
+export interface DiscoveryCandidatesFoundEvent extends BaseSSEEvent {
+  type: 'DISCOVERY_CANDIDATES_FOUND';
+  payload?: {
+    candidates: SemanticCandidate[];
+    totalMatches: number;
+    searchMethod?: string;
+  };
+}
+
+export interface DiscoveryPolicyEvaluatedEvent extends BaseSSEEvent {
+  type: 'DISCOVERY_POLICY_EVALUATED';
+  payload?: {
+    capabilityKey: string;
+    decision: CapabilityAccessDecision;
+  };
+}
+
+export interface DiscoveryCapabilitySelectedEvent extends BaseSSEEvent {
+  type: 'DISCOVERY_CAPABILITY_SELECTED';
+  payload?: {
+    capabilityKey: string;
+    capabilityName?: string;
+    capabilityType?: 'ATOMIC' | 'COMPOSITE' | 'INTELLIGENT';
+    matchScore: number;
+    selectionReason?: string;
+  };
+}
+
+export interface CapabilityExecutionStartedEvent extends BaseSSEEvent {
+  type: 'CAPABILITY_EXECUTION_STARTED';
+  payload?: {
+    capabilityKey: string;
+    capabilityType?: 'ATOMIC' | 'COMPOSITE' | 'INTELLIGENT';
+  };
+}
+
+export interface CapabilityExecutionCompletedEvent extends BaseSSEEvent {
+  type: 'CAPABILITY_EXECUTION_COMPLETED';
+  payload?: {
+    capabilityKey: string;
+    success: boolean;
+    executionTimeMs?: number;
+    error?: string;
+  };
+}
+
+// Semantic candidate from discovery
+export interface SemanticCandidate {
+  capabilityKey: string;
+  capabilityName: string;
+  capabilityType: 'ATOMIC' | 'COMPOSITE' | 'INTELLIGENT';
+  domain: string;
+  intent: string;
+  matchScore: number;
+  healthStatus?: string;
+  costBand?: string;
+  riskLevel?: string;
+  boundSkillKey?: string;
+  childCapabilities?: string[];
+}
+
+// Capability access decision from Trust Graph
+export interface CapabilityAccessDecision {
+  allowed: boolean;
+  reason?: string;
+  policyRef?: string;
+  evaluatedAt?: string;
+}
+
 export type ConversationSSEEvent =
   | TokenEvent
   | AssistantMessageEvent
@@ -197,7 +288,14 @@ export type ConversationSSEEvent =
   | SearchStepEvent
   | FinalAnswerEvent
   | DoneEvent
-  | ErrorEvent;
+  | ErrorEvent
+  | DiscoveryIntentDetectedEvent
+  | DiscoveryFeaturesComputedEvent
+  | DiscoveryCandidatesFoundEvent
+  | DiscoveryPolicyEvaluatedEvent
+  | DiscoveryCapabilitySelectedEvent
+  | CapabilityExecutionStartedEvent
+  | CapabilityExecutionCompletedEvent;
 
 // ============================================================================
 // Request/Response DTOs
@@ -395,6 +493,44 @@ export interface SkillExecution {
   skillName?: string;
   status: 'RUNNING' | 'SUCCESS' | 'FAILED';
   durationMs?: number;
+}
+
+// ============================================================================
+// Discovery State Types (for UI)
+// ============================================================================
+
+export type DiscoveryStatus =
+  | 'idle'
+  | 'detecting_intent'
+  | 'computing_features'
+  | 'discovering_capabilities'
+  | 'evaluating_policy'
+  | 'selecting_capability'
+  | 'executing';
+
+export interface DiscoveryState {
+  status: DiscoveryStatus;
+  detectedIntent?: string;
+  detectedDomain?: string;
+  intentConfidence?: number;
+  featuresComputed?: Record<string, unknown>;
+  candidates?: SemanticCandidate[];
+  totalMatches?: number;
+  selectedCapability?: {
+    key: string;
+    name?: string;
+    type?: 'ATOMIC' | 'COMPOSITE' | 'INTELLIGENT';
+    matchScore: number;
+    reason?: string;
+  };
+  policyDecision?: CapabilityAccessDecision;
+  executionStatus?: {
+    capabilityKey: string;
+    isRunning: boolean;
+    success?: boolean;
+    executionTimeMs?: number;
+    error?: string;
+  };
 }
 
 export interface AgentOption {

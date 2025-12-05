@@ -6,3 +6,5 @@ export type {
   ConversationStreamState,
 } from './useConversationStream';
 export { useEvidencePack } from './useEvidencePack';
+export { useDiscoveryStream } from './useDiscoveryStream';
+export type { UseDiscoveryStreamReturn } from './useDiscoveryStream';

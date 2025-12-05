@@ -5,6 +5,7 @@ export { MessageThread } from './MessageThread';
 export { UserMessage } from './UserMessage';
 export { AgentResponse } from './AgentResponse';
 export { PlanningIndicator } from './PlanningIndicator';
+export { DiscoveryIndicator } from './DiscoveryIndicator';
 export { ChatInput } from './ChatInput';
 export { AgentSelector } from './AgentSelector';
 export { ConversationSidebar } from './ConversationSidebar';

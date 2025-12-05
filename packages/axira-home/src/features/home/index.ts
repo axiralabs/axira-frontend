@@ -14,3 +14,7 @@ export {
   PersonaSwitcher,
   useUserRole,
 } from './RoleBasedHome';
+
+// Components
+export { ScheduledTasksList } from './components/ScheduledTasksList';
+export type { ScheduledTask, ScheduledTaskStatus, OutputAction } from './components/ScheduledTasksList';

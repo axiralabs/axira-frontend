@@ -92,7 +92,11 @@ export function BoardPage({ userName = BOARD_MEMBER_NAME }: BoardPageProps) {
           <h1 className="text-3xl font-semibold text-white">
             {timeGreeting}, {userName}
           </h1>
-          <p className="text-gray-400 mt-1">Strategic Intelligence Dashboard</p>
+          <p className="text-gray-400 mt-2">
+            Insights generated from{' '}
+            <span className="text-blue-400 font-medium">47,000+ operational decisions</span>{' '}
+            analyzed this quarter
+          </p>
         </div>
 
         {/* Ask Axira Command Bar - Same style as home */}
